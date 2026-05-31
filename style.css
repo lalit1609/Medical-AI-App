@@ -9,6 +9,11 @@
     --chat-user: #22252A;
 }
 
+/* FOOLPROOF HIDDEN UTILITY: Forced to stay hidden until upload */
+.hidden { 
+    display: none !important; 
+}
+
 * {
     box-sizing: border-box;
     margin: 0;
@@ -37,9 +42,9 @@ body {
     flex-direction: column;
     padding: 24px;
     gap: 32px;
+    flex-shrink: 0;
 }
 
-/* BRANDING CONTAINER: Aligns text and logo side-by-side */
 .brand {
     font-size: 22px;
     font-weight: 600;
@@ -49,7 +54,6 @@ body {
     gap: 12px;             
 }
 
-/* ENLARGED LOGO STYLE: Scaled up to 40px */
 .brand-logo {
     height: 40px;          
     width: auto;           
@@ -99,24 +103,26 @@ input[type="file"] {
     text-align: center;
 }
 
-/* Main Display Space */
+/* Main Workspace Area */
 .main-content {
     flex: 1;
     display: flex;
     flex-direction: column;
-    height: 100%;
-    position: relative;
+    height: 100vh;
+    overflow: hidden;
 }
 
+/* RESULTS GRID: Perfectly contained layout */
 .results-grid {
-    flex: 1;
-    overflow-y: auto;
     padding: 32px;
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 20px;
-    max-height: 55%;
+    height: 50%;
+    max-height: 50%;
+    overflow-y: auto;
     border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
 }
 
 .card {
@@ -155,12 +161,13 @@ input[type="file"] {
     color: #fff;
 }
 
-/* Chat Engine Area */
+/* CHAT AREA: Safe flex alignment mapping */
 .chat-section {
     flex: 1;
     display: flex;
     flex-direction: column;
     background-color: var(--bg-main);
+    min-height: 0; /* Prevents parent container from breaking layout specs */
     overflow: hidden;
 }
 
@@ -171,8 +178,77 @@ input[type="file"] {
     display: flex;
     flex-direction: column;
     gap: 16px;
+    min-height: 0; /* Allows container to shrink and scroll cleanly */
 }
 
 .chat-message {
     max-width: 75%;
-    padding: 14px
+    padding: 14px 18px;
+    border-radius: 12px;
+    font-size: 14px;
+    line-height: 1.5;
+    white-space: pre-line;
+}
+
+.ai-message {
+    background-color: transparent;
+    color: var(--text-primary);
+    align-self: flex-start;
+    border-left: 2px solid var(--accent);
+    border-radius: 0;
+    padding-left: 12px;
+}
+
+.user-message {
+    background-color: var(--chat-user);
+    color: #fff;
+    align-self: flex-end;
+}
+
+/* FIXED CHATBAR INPUT CONTAINER */
+.chat-input-container {
+    padding: 24px 32px;
+    display: flex;
+    gap: 12px;
+    background: var(--bg-main);
+    border-top: 1px solid var(--border);
+    flex-shrink: 0; /* ABSOLUTE PROTECTION: Will never get squished out of frame */
+}
+
+.chat-input-container input {
+    flex: 1;
+    background-color: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px;
+    color: #fff;
+    font-size: 14px;
+    outline: none;
+}
+
+.chat-input-container input:focus {
+    border-color: var(--text-secondary);
+}
+
+.chat-input-container button {
+    background-color: var(--text-primary);
+    color: var(--bg-main);
+    border: none;
+    padding: 0 24px;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+/* Spinner Utilities */
+.spinner {
+    width: 24px;
+    height: 24px;
+    border: 2px solid var(--border);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin: 0 auto 12px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.loading-container { text-align: center; font-size: 12px; color: var(--text-secondary); padding-top: 20px; }
