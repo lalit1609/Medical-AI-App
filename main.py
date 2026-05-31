@@ -1,27 +1,39 @@
 import os
-from flask import Flask, request, jsonify
-from flask_cors import CORS
-import google.generativeai as genai
+import base64
+import json
+from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+from typing import Optional
+from google import genai
+from google.genai import types
+import uvicorn
 
-app = Flask(__name__)
-CORS(app)
+app = FastAPI()
 
-# Secure API Key configuration
-GEMINI_KEY = os.getenv("GEMINI_API_KEY")
-genai.configure(api_key=GEMINI_KEY)
-
-# Force Gemini to disable all standard safety filter blocks for educational data training
-safety_config = [
-    {
-        "category": "HARM_CATEGORY_DANGEROUS_CONTENT",
-        "threshold": "BLOCK_NONE"
-    }
-]
-
-model = genai.GenerativeModel(
-    model_name='gemini-2.5-flash',
-    safety_settings=safety_config
+# Enable CORS for frontend asset delivery mapping
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
+
+# Initialize the new Google GenAI SDK client
+# Automatically inherits GEMINI_API_KEY from your Render Environment variables
+GEMINI_KEY = os.getenv("GEMINI_API_KEY")
+client = genai.Client(api_key=GEMINI_KEY)
+
+# Define schemas matching frontend endpoints
+class AnalyzeRequest(BaseModel):
+    type: str
+    content: str
+    mimeType: Optional[str] = "image/jpeg"
+
+class ChatRequest(BaseModel):
+    reportContext: Optional[str] = ""
+    userQuestion: str
 
 ANALYSIS_PROMPT = """
 You are MedAI, an advanced medical report interpreter. Analyze this medical report data and provide a structured JSON output. 
@@ -63,42 +75,76 @@ Core Execution Rules:
 5. Add a single line spacer and append this tiny disclaimer: "*Educational database entry. Verify choices with a pharmacist or medical team.*"
 """
 
-@app.route('/api/analyze', methods=['POST'])
-def analyze_report():
+@app.post("/api/analyze")
+async def analyze_report(data: AnalyzeRequest):
     try:
-        data = request.json
-        payload_type = data.get('type')
-        content = data.get('content')
+        safety_config = [
+            types.SafetySetting(
+                category=types.HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+                threshold=types.HarmBlockThreshold.BLOCK_NONE,
+            )
+        ]
+        
+        config = types.GenerateContentConfig(
+            safety_settings=safety_config,
+            response_mime_type="application/json"
+        )
 
-        if payload_type == 'text':
-            response = model.generate_content([ANALYSIS_PROMPT, content])
-        elif payload_type == 'image':
-            image_data = {
-                "mime_type": data.get('mimeType', 'image/jpeg'),
-                "data": content
-            }
-            response = model.generate_content([ANALYSIS_PROMPT, image_data])
+        if data.type == 'text':
+            response = client.models.generate_content(
+                model='gemini-2.5-flash',
+                contents=[ANALYSIS_PROMPT, data.content],
+                config=config
+            )
+        elif data.type == 'image':
+            b64_str = data.content
+            if "," in b64_str:
+                b64_str = b64_str.split(",")[1]
+            image_bytes = base64.b64decode(b64_str)
+            
+            image_part = types.Part.from_bytes(
+                data=image_bytes,
+                mime_type=data.mimeType or "image/jpeg"
+            )
+            
+            response = client.models.generate_content(
+                model='gemini-2.5-flash',
+                contents=[ANALYSIS_PROMPT, image_part],
+                config=config
+            )
         else:
-            return jsonify({"error": "Invalid payload type"}), 400
+            raise HTTPException(status_code=400, detail="Invalid payload structure type")
 
         clean_text = response.text.replace("```json", "").replace("```", "").strip()
-        return clean_text, 200, {'Content-Type': 'application/json; charset=utf-8'}
+        return json.loads(clean_text)
 
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        raise HTTPException(status_code=500, detail=str(e))
 
-@app.route('/api/chat', methods=['POST'])
-def chat_followup():
+@app.post("/api/chat")
+async def chat_followup(data: ChatRequest):
     try:
-        data = request.json
-        question = data.get('userQuestion', '')
+        safety_config = [
+            types.SafetySetting(
+                category=types.HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+                threshold=types.HarmBlockThreshold.BLOCK_NONE,
+            )
+        ]
+        
+        config = types.GenerateContentConfig(safety_settings=safety_config)
+        formatted_prompt = CHAT_PROMPT_TEMPLATE.format(question=data.userQuestion)
+        
+        response = client.models.generate_content(
+            model='gemini-2.5-flash',
+            contents=formatted_prompt,
+            config=config
+        )
 
-        formatted_prompt = CHAT_PROMPT_TEMPLATE.format(question=question)
-        response = model.generate_content(formatted_prompt)
-
-        return jsonify({"answer": response.text})
+        return {"answer": response.text}
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=8000)
+    # Binds server directly to Render's dynamic system container assignment environment maps
+    port = int(os.environ.get("PORT", 8000))
+    uvicorn.run(app, host="0.0.0.0", port=port)
