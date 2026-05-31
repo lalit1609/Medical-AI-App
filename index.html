@@ -4,13 +4,21 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MedAI // Intelligence</title>
+    <!-- BROWSER TAB CONFIGURATION -->
+    <link rel="icon" type="image/png" href="favicon.png">
     <link rel="stylesheet" href="style.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
 </head>
 <body>
     <div class="app-container">
+        <!-- Sidebar for uploads -->
         <aside class="sidebar">
-            <div class="brand">MedAI</div>
+            <!-- SIDEBAR BRANDING CONFIGURATION -->
+            <div class="brand">
+                <img src="logo-web.png" alt="MedAI Logo" class="brand-logo">
+                <span>MedAI</span>
+            </div>
+            
             <div class="upload-box">
                 <label for="report-upload" class="custom-file-upload">
                     <span>＋ Drop Report here</span>
@@ -26,7 +34,9 @@
             </div>
         </aside>
 
+        <!-- Main Dashboard Workspace -->
         <main class="main-content">
+            <!-- Structured Engine Results Layout -->
             <section id="results" class="results-grid hidden">
                 <div class="card full-width">
                     <h3>Clinical Analysis Summary</h3>
@@ -46,6 +56,7 @@
                 </div>
             </section>
 
+            <!-- ChatGPT style Chat interface -->
             <section class="chat-section">
                 <div id="chat-history" class="chat-history">
                     <div class="chat-message ai-message">
