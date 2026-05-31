@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MedAI | Intelligent Report Analyzer</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>MedAI</h1>
+            <p>Upload a PDF report or take a picture of your lab results for an instant, clear explanation.</p>
+        </header>
+
+        <main>
+            <div class="upload-section">
+                <input type="file" id="report-upload" accept="application/pdf, image/*" class="file-input">
+                <label for="report-upload" class="upload-btn">📁 Upload PDF or Image</label>
+                <p id="file-name">No document selected</p>
+            </div>
+
+            <div id="loading" class="hidden">
+                <div class="spinner"></div>
+                <p id="loading-text">Processing your document and consulting MedAI...</p>
+            </div>
+
+            <div id="results" class="hidden">
+                <div class="result-card">
+                    <h3>🩺 Key Terms Explained</h3>
+                    <ul id="terms-list"></ul>
+                </div>
+                
+                <div class="result-card alert-card">
+                    <h3>⚠️ Flagged Values (High/Low)</h3>
+                    <ul id="values-list"></ul>
+                </div>
+
+                <div class="result-card">
+                    <h3>💬 Suggested Questions for Your Doctor</h3>
+                    <ul id="questions-list"></ul>
+                </div>
+
+                <div class="chat-section">
+                    <h3>🤔 Have follow-up questions or confusion?</h3>
+                    <div id="chat-history" class="chat-history">
+                        <div class="chat-message ai-message">I've parsed your report. Ask me anything about these results!</div>
+                    </div>
+                    <div class="chat-input-container">
+                        <input type="text" id="chat-input" placeholder="Type your question here (e.g., What does high LDL mean for my diet?)...">
+                        <button id="send-chat-btn">Ask MedAI</button>
+                    </div>
+                </div>
+                
+                <p class="disclaimer"><strong>Disclaimer:</strong> MedAI is an AI assistant meant for educational clarity. It is not a substitute for professional medical advice, diagnosis, or treatment.</p>
+            </div>
+        </main>
+    </div>
+    <script src="app.js"></script>
+</body>
+</html>
