@@ -12,11 +12,10 @@ const chatHistory = document.getElementById('chat-history');
 const chatInput = document.getElementById('chat-input');
 const sendChatBtn = document.getElementById('send-chat-btn');
 
-// Global state tracking to remember context for the follow-up prompt bar
 let currentReportText = ""; 
 
-// CHANGE THIS LINK: Put your exact Render URL here (Make sure it has no trailing slash at the end)
-const CLOUD_BACKEND_URL = "https://medai-backend-11h5.onrender.com";
+// CHANGE THIS LINK: Update with your exact Render web service address
+const CLOUD_BACKEND_URL = "https://medai-backend.onrender.com";
 
 fileInput.addEventListener('change', async (event) => {
     const file = event.target.files[0];
@@ -26,29 +25,28 @@ fileInput.addEventListener('change', async (event) => {
     loadingDiv.classList.remove('hidden');
     resultsDiv.classList.add('hidden');
     
-    // Clear old chat logs
-    chatHistory.innerHTML = '<div class="chat-message ai-message">I\'ve parsed your report. Ask me anything about these results!</div>';
+    chatHistory.innerHTML = '<div class="chat-message ai-message">System synced. I have processed the clinical parameters. Ask me any direct or overarching health questions below.</div>';
 
     try {
         if (file.type === "application/pdf") {
-            loadingText.textContent = "Extracting text from PDF report...";
+            loadingText.textContent = "Extracting text matrices...";
             const extractedText = await extractTextFromPDF(file);
-            loadingText.textContent = "Consulting MedAI Medical Engine (Waking up cloud server)...";
+            loadingText.textContent = "Connecting to MedAI Cloud Base...";
             const aiResponse = await analyzeReportWithAI({ type: 'text', content: extractedText });
             renderResults(aiResponse);
         } else if (file.type.startsWith("image/")) {
-            loadingText.textContent = "Reading image data via computer vision...";
+            loadingText.textContent = "Scanning visual markers...";
             const base64Data = await convertFileToBase64(file);
-            loadingText.textContent = "Consulting MedAI Visual Medical Engine (Waking up cloud server)...";
+            loadingText.textContent = "Connecting to MedAI Cloud Base...";
             const aiResponse = await analyzeReportWithAI({ type: 'image', content: base64Data, mimeType: file.type });
             renderResults(aiResponse);
         } else {
-            alert("Unsupported format. Please select an image file or a PDF.");
+            alert("Unsupported format.");
             loadingDiv.classList.add('hidden');
         }
     } catch (error) {
         console.error(error);
-        alert("Processing failed. Please check your internet connection or verify your Render service deployment.");
+        alert("Execution sync failed.");
         loadingDiv.classList.add('hidden');
     }
 });
@@ -69,11 +67,7 @@ function convertFileToBase64(file) {
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
         reader.readAsDataURL(file);
-        reader.onload = () => {
-            // Trim off the 'data:image/png;base64,' meta indicator prefix string
-            const base64String = reader.result.split(',')[1];
-            resolve(base64String);
-        };
+        reader.onload = () => { resolve(reader.result.split(',')[1]); };
         reader.onerror = error => reject(error);
     });
 }
@@ -84,32 +78,30 @@ async function analyzeReportWithAI(payload) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
     });
-    if (!response.ok) throw new Error("Backend connection issue.");
+    if (!response.ok) throw new Error("Sync failure.");
     return await response.json();
 }
 
 function renderResults(data) {
-    currentReportText = data.rawReportSummary; // Save context for chat
+    currentReportText = data.rawReportSummary; 
 
+    document.getElementById('summary-text').textContent = data.rawReportSummary;
     document.getElementById('terms-list').innerHTML = data.terms.map(i => `<li><strong>${i.term}:</strong> ${i.simpleDefinition}</li>`).join('');
-    document.getElementById('values-list').innerHTML = data.flaggedValues.map(i => `<li><strong>${i.testName}:</strong> ${i.value} <em>(${i.meaning})</em></li>`).join('');
-    document.getElementById('questions-list').innerHTML = data.questions.map(q => `<li>${q}</li>`).join('');
+    document.getElementById('values-list').innerHTML = data.flaggedValues.map(i => `<li><strong>${i.testName}:</strong> ${i.value} — <em>${i.meaning}</em></li>`).join('');
+    document.getElementById('questions-list').innerHTML = data.questions.map(q => `<li>• ${q}</li>`).join('');
 
     loadingDiv.classList.add('hidden');
     resultsDiv.classList.remove('hidden');
 }
 
-// Interactive Follow-up Chat System Execution
 async function handleChatSubmission() {
     const question = chatInput.value.trim();
     if (!question) return;
 
-    // Append user message immediately to the UI bubble track
     appendChatMessage(question, 'user-message');
     chatInput.value = "";
 
-    // Append a temporary loading bubble placeholder
-    const loadingBubble = appendChatMessage("Thinking...", 'ai-message');
+    const loadingBubble = appendChatMessage("Analyzing medical dataset and cross-referencing...", 'ai-message');
 
     try {
         const response = await fetch(`${CLOUD_BACKEND_URL}/api/chat`, {
@@ -123,9 +115,8 @@ async function handleChatSubmission() {
         const result = await response.json();
         loadingBubble.textContent = result.answer;
     } catch (err) {
-        loadingBubble.textContent = "Error: Couldn't connect to MedAI to process the message.";
+        loadingBubble.textContent = "Unable to route message to core model.";
     }
-    chatHistory.scrollTop = chatHistory.scrollHeight;
 }
 
 function appendChatMessage(text, className) {
