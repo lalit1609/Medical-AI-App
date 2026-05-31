@@ -39,10 +39,23 @@ body {
     gap: 32px;
 }
 
+/* UPDATED BRANDING: Forces text and image side-by-side */
 .brand {
     font-size: 22px;
     font-weight: 600;
     letter-spacing: -0.5px;
+    display: flex;         /* Forces layout horizontally side-by-side */
+    align-items: center;   /* Perfectly centers vertically */
+    gap: 12px;             /* Creates a clean clean distance between asset and font */
+}
+
+/* UPDATED LOGO SIZE: Now strictly limited to the text height */
+.brand-logo {
+    height: 22px;          /* Match this exact value with the font-size above */
+    width: auto;           /* Automatically adjusts width to prevent distortion */
+    max-height: 22px;      /* Hard limit to ensure it never gets bigger */
+    object-fit: contain;
+    border-radius: 4px;
 }
 
 .upload-box {
