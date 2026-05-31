@@ -111,8 +111,7 @@ async def analyze_report(data: AnalyzeRequest):
         else:
             raise HTTPException(status_code=400, detail="Invalid payload structure type")
 
-        clean_text = response.text.replace("```json", "").replace("
-```", "").strip()
+        clean_text = response.text.replace("```json", "").replace("```", "").strip()
         return json.loads(clean_text)
 
     except Exception as e:
