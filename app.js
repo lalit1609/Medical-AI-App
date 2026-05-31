@@ -15,6 +15,9 @@ const sendChatBtn = document.getElementById('send-chat-btn');
 // Global state tracking to remember context for the follow-up prompt bar
 let currentReportText = ""; 
 
+// CHANGE THIS LINK: Put your exact Render URL here (Make sure it has no trailing slash at the end)
+const CLOUD_BACKEND_URL = "https://medai-backend-11h5.onrender.com";
+
 fileInput.addEventListener('change', async (event) => {
     const file = event.target.files[0];
     if (!file) return;
@@ -30,13 +33,13 @@ fileInput.addEventListener('change', async (event) => {
         if (file.type === "application/pdf") {
             loadingText.textContent = "Extracting text from PDF report...";
             const extractedText = await extractTextFromPDF(file);
-            loadingText.textContent = "Consulting MedAI Medical Engine...";
+            loadingText.textContent = "Consulting MedAI Medical Engine (Waking up cloud server)...";
             const aiResponse = await analyzeReportWithAI({ type: 'text', content: extractedText });
             renderResults(aiResponse);
         } else if (file.type.startsWith("image/")) {
             loadingText.textContent = "Reading image data via computer vision...";
             const base64Data = await convertFileToBase64(file);
-            loadingText.textContent = "Consulting MedAI Visual Medical Engine...";
+            loadingText.textContent = "Consulting MedAI Visual Medical Engine (Waking up cloud server)...";
             const aiResponse = await analyzeReportWithAI({ type: 'image', content: base64Data, mimeType: file.type });
             renderResults(aiResponse);
         } else {
@@ -45,7 +48,7 @@ fileInput.addEventListener('change', async (event) => {
         }
     } catch (error) {
         console.error(error);
-        alert("Processing failed. Make sure your Python server is running!");
+        alert("Processing failed. Please check your internet connection or verify your Render service deployment.");
         loadingDiv.classList.add('hidden');
     }
 });
@@ -76,7 +79,7 @@ function convertFileToBase64(file) {
 }
 
 async function analyzeReportWithAI(payload) {
-    const response = await fetch('http://127.0.0.1:8000/api/analyze', {
+    const response = await fetch(`${CLOUD_BACKEND_URL}/api/analyze`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -109,7 +112,7 @@ async function handleChatSubmission() {
     const loadingBubble = appendChatMessage("Thinking...", 'ai-message');
 
     try {
-        const response = await fetch('http://127.0.0.1:8000/api/chat', {
+        const response = await fetch(`${CLOUD_BACKEND_URL}/api/chat`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
