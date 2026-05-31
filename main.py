@@ -1,103 +1,95 @@
-from fastapi import FastAPI, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
-from typing import Optional
-from google import genai
-from google.genai import types
-import json
-import os # This lets Python read safe background variables from the cloud
+import os
+from flask import Flask, request, jsonify
+from flask_cors import CORS
+import google.generativeai as genai
 
-app = FastAPI()
+app = Flask(__name__)
+CORS(app)
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"], # Allows your mobile app to connect from anywhere in the world
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-class DocumentPayload(BaseModel):
-    type: str
-    content: str
-    mimeType: Optional[str] = None
-
-class ChatPayload(BaseModel):
-    reportContext: str
-    userQuestion: str
-
-# This grabs your key secretly from the cloud settings instead of hardcoding it
+# Secure API Key configuration
 GEMINI_KEY = os.getenv("GEMINI_API_KEY")
-client = genai.Client(api_key=GEMINI_KEY)
+genai.configure(api_key=GEMINI_KEY)
 
-@app.get("/")
-def home():
-    return {"status": "MedAI Engine Online"}
+# Use Gemini 2.5 Flash for vision and text processing
+model = genai.GenerativeModel('gemini-2.5-flash')
 
-@app.post("/api/analyze")
-async def analyze_document(payload: DocumentPayload):
+ANALYSIS_PROMPT = """
+You are MedAI, an advanced medical report interpreter. Analyze this medical report data and provide a highly personalized, structured JSON output. 
+Identify the patient's age/gender if visible; if not, use standard adult ranges but note that ranges shift with age.
+
+Strictly return ONLY a valid JSON object matching this structure:
+{
+  "rawReportSummary": "A concise, 3-sentence summary of the overall health findings.",
+  "terms": [
+    {"term": "Medical Term", "simpleDefinition": "A ultra-short, jargon-free 1-sentence explanation."}
+  ],
+  "flaggedValues": [
+    {
+      "testName": "Biomarker Name (e.g., HbA1c)",
+      "value": "Patient's value",
+      "meaning": "Clear statement of whether this is High/Low/Normal based on typical age brackets, and what it physically means for their body."
+    }
+  ],
+  "questions": [
+    "Suggested question 1 for their doctor",
+    "Suggested question 2 for their doctor"
+  ]
+}
+"""
+
+CHAT_PROMPT_TEMPLATE = """
+You are MedAI, a helpful, deeply knowledgeable personal medical AI assistant. You have access to the patient's medical report summary below, but you are NOT restricted to it. You are a general medical expert.
+
+Patient's Report Summary Context:
+{context}
+
+User's Question: {question}
+
+Instructions:
+- Provide comprehensive, empathetic, and clear explanations.
+- If the user asks about medications, treatments, or specific drugs related to their findings, explain how those classes of medicines work fundamentally, common guidelines, and what mechanisms they target in the body.
+- Always include a standard medical disclaimer at the end of your chat answer advising them to confirm treatment adjustments with their physician.
+"""
+
+@app.route('/api/analyze', methods=['POST'])
+def analyze_report():
     try:
-        if payload.type == 'image':
-            doc_input = types.Part.from_bytes(
-                data=payload.content.encode('utf-8'),
-                mime_type=payload.mimeType or "image/jpeg"
-            )
+        data = request.json
+        payload_type = data.get('type')
+        content = data.get('content')
+
+        if payload_type == 'text':
+            response = model.generate_content([ANALYSIS_PROMPT, content])
+        elif payload_type == 'image':
+            image_data = {
+                "mime_type": data.get('mimeType', 'image/jpeg'),
+                "data": content
+            }
+            response = model.generate_content([ANALYSIS_PROMPT, image_data])
         else:
-            doc_input = payload.content
+            return jsonify({"error": "Invalid payload type"}), 400
 
-        prompt = """
-        You are an expert medical assistant named MedAI. Analyze the provided clinical documentation context.
-        Return a strict, valid JSON object containing exactly the structural properties listed below.
-        Do not prepend markdown formatting, do not wrap in code blocks (like ```json), just output the raw JSON string.
-
-        {
-          "terms": [
-            {"term": "Example Jargon", "simpleDefinition": "Clear plain explanation"}
-          ],
-          "flaggedValues": [
-            {"testName": "Example Biomarker", "value": "120 (High/Low)", "meaning": "Simplified summary implication"}
-          ],
-          "questions": [
-             "Smart clarifying diagnostic conversation prompt 1"
-          ],
-          "rawReportSummary": "A concise comprehensive text summary explaining what this report is about overall."
-        }
-        """
-
-        response = client.models.generate_content(
-            model='gemini-2.5-flash',
-            contents=[doc_input, prompt]
-        )
-
-        clean_text = response.text.replace("```json", "").replace("```", "").strip()
-        return json.loads(clean_text)
+        # Clean JSON markdown styling if present
+        clean_text = response.text.replace("```json", "").replace("
+```", "").strip()
+        return clean_text, 200, {'Content-Type': 'application/json; charset=utf-8'}
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        return jsonify({"error": str(e)}), 500
 
-@app.post("/api/chat")
-async def process_chat_followup(payload: ChatPayload):
+@app.route('/api/chat', methods=['POST'])
+def chat_followup():
     try:
-        prompt = f"""
-        You are MedAI, an empathetic and supportive medical assistant designed to clear up confusion about lab work.
-        Keep answers highly understandable, warm, and avoid complex medical jargon.
-        
-        The baseline context of the user's report is: {payload.reportContext}
-        
-        The user is confused or has a follow-up question. Answer it directly and simply based on their report details:
-        Question: {payload.userQuestion}
-        """
+        data = request.json
+        context = data.get('reportContext', 'No report uploaded yet.')
+        question = data.get('userQuestion', '')
 
-        response = client.models.generate_content(
-            model='gemini-2.5-flash',
-            contents=prompt
-        )
-        return {"answer": response.text.strip()}
+        formatted_prompt = CHAT_PROMPT_TEMPLATE.format(context=context, question=question)
+        response = model.generate_content(formatted_prompt)
+
+        return jsonify({"answer": response.text})
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        return jsonify({"error": str(e)}), 500
 
-# This automatically listens to the dynamic port the cloud server gives us
-if __name__ == "__main__":
-    import uvicorn
-    port = int(os.getenv("PORT", 8000))
-    uvicorn.run("main:app", host="0.0.0.0", port=port)
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=8000)

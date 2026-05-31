@@ -14,8 +14,8 @@ const sendChatBtn = document.getElementById('send-chat-btn');
 
 let currentReportText = ""; 
 
-// CHANGE THIS LINK: Update with your exact Render web service address
-const CLOUD_BACKEND_URL = "https://medai-backend.onrender.com";
+// Your exact Render web service address integrated perfectly:
+const CLOUD_BACKEND_URL = "https://medai-backend-11h5.onrender.com";
 
 fileInput.addEventListener('change', async (event) => {
     const file = event.target.files[0];
