@@ -9,7 +9,7 @@
     --chat-user: #22252A;
 }
 
-/* FOOLPROOF HIDDEN UTILITY: Forced to stay hidden until upload */
+/* FOOLPROOF HIDDEN UTILITY */
 .hidden { 
     display: none !important; 
 }
@@ -33,7 +33,7 @@ body {
     height: 100vh;
 }
 
-/* Sidebar Layout */
+/* Sidebar Layout (Desktop Default) */
 .sidebar {
     width: 300px;
     background-color: var(--bg-sidebar);
@@ -112,7 +112,7 @@ input[type="file"] {
     overflow: hidden;
 }
 
-/* RESULTS GRID: Perfectly contained layout */
+/* RESULTS GRID */
 .results-grid {
     padding: 32px;
     display: grid;
@@ -161,13 +161,13 @@ input[type="file"] {
     color: #fff;
 }
 
-/* CHAT AREA: Safe flex alignment mapping */
+/* CHAT AREA */
 .chat-section {
     flex: 1;
     display: flex;
     flex-direction: column;
     background-color: var(--bg-main);
-    min-height: 0; /* Prevents parent container from breaking layout specs */
+    min-height: 0; 
     overflow: hidden;
 }
 
@@ -178,7 +178,7 @@ input[type="file"] {
     display: flex;
     flex-direction: column;
     gap: 16px;
-    min-height: 0; /* Allows container to shrink and scroll cleanly */
+    min-height: 0; 
 }
 
 .chat-message {
@@ -212,7 +212,7 @@ input[type="file"] {
     gap: 12px;
     background: var(--bg-main);
     border-top: 1px solid var(--border);
-    flex-shrink: 0; /* ABSOLUTE PROTECTION: Will never get squished out of frame */
+    flex-shrink: 0; 
 }
 
 .chat-input-container input {
@@ -252,3 +252,67 @@ input[type="file"] {
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 .loading-container { text-align: center; font-size: 12px; color: var(--text-secondary); padding-top: 20px; }
+
+
+/* ========================================== */
+新規追加 /* AUTOMATED MOBILE SMART MEDIA QUERY RESPONSIVENESS MATRIX */
+/* ========================================== */
+@media (max-width: 768px) {
+    .app-container {
+        flex-direction: column; /* Stacks sidebar on top of chat content vertically */
+    }
+
+    .sidebar {
+        width: 100%;
+        height: auto;
+        padding: 16px;
+        gap: 16px;
+        border-right: none;
+        border-bottom: 1px solid var(--border);
+    }
+
+    .brand {
+        justify-content: flex-start;
+    }
+    
+    .brand-logo {
+        height: 32px; /* Marginally downscales logo footprint on mobile headers */
+        max-height: 32px;
+    }
+
+    .upload-box {
+        gap: 8px;
+    }
+
+    .custom-file-upload {
+        padding: 16px 12px; /* Makes dropping asset panels ultra-compact on mobile */
+    }
+
+    .main-content {
+        height: auto;
+        flex: 1; /* Automatically consumes all remaining vertical height maps */
+    }
+
+    .results-grid {
+        grid-template-columns: 1fr; /* Forces metrics onto a single responsive column row */
+        padding: 16px;
+        gap: 12px;
+        max-height: 35%; /* Caps dashboard parameters to prioritize chat interface views */
+    }
+
+    .full-width {
+        grid-column: span 1;
+    }
+
+    .chat-history {
+        padding: 20px 16px;
+    }
+
+    .chat-message {
+        max-width: 85%; /* Extends chat width bubbles slightly for readability on narrow glass panels */
+    }
+
+    .chat-input-container {
+        padding: 16px;
+    }
+}
