@@ -4,7 +4,7 @@ import json
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List
 from google import genai
 from google.genai import types
 import uvicorn
@@ -31,9 +31,14 @@ class AnalyzeRequest(BaseModel):
     content: str
     mimeType: Optional[str] = "image/jpeg"
 
+class ChatMessage(BaseModel):
+    role: str
+    text: str
+
 class ChatRequest(BaseModel):
     reportContext: Optional[str] = ""
     userQuestion: str
+    history: Optional[List[ChatMessage]] = []
 
 ANALYSIS_PROMPT = """
 You are MedAI, an advanced medical report interpreter. Analyze this medical report data and provide a structured JSON output. 
@@ -57,24 +62,31 @@ Strictly return ONLY a valid JSON object matching this structure:
 }
 """
 
-# FIXED PROMPT: Enforces conservative dosing ceilings and strict safe-handling boundaries
 CHAT_PROMPT_TEMPLATE = """
-You are MedAI, an intelligent, empathetic Indian First-Aid & OTC Medication Assistant. Your goal is to guide users through minor ailments using a comfortable, step-by-step triage conversation so you do not overwhelm them with too many questions at once.
+You are MedAI, an intelligent, clinical, yet empathetic Indian First-Aid & OTC Medication Assistant. Your goal is to guide users through their health concerns using a fluid, continuous conversation.
 
-User's Input: {question}
+CRITICAL CONVERSATIONAL & TONE RULES:
+1. NO REPETITIVE GREETINGS: Never say "Hello", "Welcome", or greet the user if the conversation history shows you are already talking.
+2. BAN ROBOTIC EMPATHY LOOPS: Do NOT use canned, repetitive consolation scripts like "Oh dear, I know [symptom] is painful/uncomfortable." Acknowledge new information naturally and professionally, just like a real healthcare provider would, without sounding like a broken record.
+3. SYNTHESIZE MULTIPLE SYMPTOMS: Do NOT treat each message as a brand-new, isolated disease. Look at the entire conversation history. If they say their leg hurts, and then say they have a fever, synthesize these symptoms together logically (e.g., highlighting that a fever following an injury could point to a localized infection) rather than wiping your memory clean.
 
-You must analyze the user's input and strictly follow this phased protocol:
+---
+CONVERSATION TIMELINE FOR CONTEXT:
+{history}
+---
 
-PHASE 1: GATHER CORE PARAMETERS (If Location or Intensity is missing)
-- If the user mentions a symptom (like a headache, stomach ache, body pain) but has NOT yet clearly specified BOTH the exact location and the intensity, you must ask ONLY for those two details.
-- Provide a brief, comforting acknowledgment, and then ask for the intensity and location clearly. Do not suggest specific medications, dosages, or ask about secondary symptoms in this phase.
+User's Latest Input: {question}
 
-PHASE 2: TAILORED MEDICATION & SECONDARY TRIAGE (If Location and Intensity are known)
-- If the user's input contains or answers both the location and intensity of the pain, proceed to give tailored relief options.
-- Recommend conservative, safe Indian OTC options matching their intensity description (e.g., a single Crocin Advance 500mg or Saridon for mild/moderate tension headaches).
-- ALWAYS prioritize advising the user to take a single tablet "as needed" for temporary relief rather than setting up an aggressive, heavy round-the-clock repeating schedule. 
+You must analyze the user's input alongside the timeline context and strictly follow this phased protocol:
+
+PHASE 1: GATHER CORE PARAMETERS (If Location or Intensity is unknown across the chat)
+- If the core parameters of the main active symptom (location and intensity) have not been established yet anywhere in the conversation history, ask for those details clearly and succinctly. Do not jump straight to suggesting medications or asking secondary diagnostic questions.
+
+PHASE 2: TAILORED MEDICATION & SECONDARY TRIAGE (If Core Parameters are known)
+- Recommend highly conservative, safe Indian OTC options matching their intensity description (e.g., a single Crocin Advance 500mg or Saridon for mild/moderate tension headaches).
+- ALWAYS advise taking medication strictly "as needed" for temporary relief rather than setting up an aggressive, heavy round-the-clock repeating schedule.
 - Set a strict precautionary ceiling for self-care: emphasize keeping total intake under a conservative 2000mg limit in a 24-hour window (e.g., maximum 4 tablets of 500mg total across the entire day if absolutely necessary). Never suggest heavy or maximum clinical ceilings like 4000mg for routine minor discomfort.
-- AFTER listing the medication and dosage, ask your secondary triage questions to check for underlying complications (e.g., "To ensure it's nothing serious, are you also running a fever, feeling nauseous, or experiencing any dizziness?").
+- AFTER listing the medication and dosage guidance, ask your secondary triage questions to check for underlying complications or progress updates (e.g., checking for systemic signs like nausea, dizziness, or a spiking temperature).
 
 Core Operational Guardrails:
 1. NO AUTOMATIC REFUSALS: Do not hide behind corporate AI text. Speak naturally as a helpful first-aid advisor.
@@ -85,14 +97,48 @@ At the absolute end of your response, add this single-line disclaimer wrapped in
 "<i>Educational reference guide. Please verify with a pharmacist or healthcare professional.</i>"
 """
 
+@app.post("/api/chat")
+async def chat_followup(data: ChatRequest):
+    try:
+        safety_config = [
+            types.SafetySetting(category=types.HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold=types.HarmBlockThreshold.BLOCK_NONE),
+            types.SafetySetting(category=types.HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold=types.HarmBlockThreshold.BLOCK_NONE),
+            types.SafetySetting(category=types.HarmCategory.HARM_CATEGORY_HARASSMENT, threshold=types.HarmBlockThreshold.BLOCK_NONE),
+            types.SafetySetting(category=types.HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold=types.HarmBlockThreshold.BLOCK_NONE),
+        ]
+        
+        config = types.GenerateContentConfig(safety_settings=safety_config)
+        
+        # Format the continuous list data structure into a readable timeline for the LLM
+        history_str = ""
+        if data.history:
+            for msg in data.history:
+                sender = "Patient" if msg.role == "user" else "MedAI Assistant"
+                history_str += f"{sender}: {msg.text}\n"
+        else:
+            history_str = "No prior history. This is the start of the conversation."
+
+        formatted_prompt = CHAT_PROMPT_TEMPLATE.format(history=history_str, question=data.userQuestion)
+        
+        response = client.models.generate_content(
+            model='gemini-2.5-flash',
+            contents=formatted_prompt,
+            config=config
+        )
+
+        if response.text:
+            return {"answer": response.text}
+        else:
+            return {"answer": "I am monitoring your symptoms. Could you clarify the exact location and intensity of the discomfort you are feeling?"}
+
+    except Exception as e:
+        return {"answer": f"Backend Diagnostics Error: {str(e)}"}
+
 @app.post("/api/analyze")
 async def analyze_report(data: AnalyzeRequest):
     try:
         safety_config = [
-            types.SafetySetting(
-                category=types.HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
-                threshold=types.HarmBlockThreshold.BLOCK_NONE,
-            )
+            types.SafetySetting(category=types.HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold=types.HarmBlockThreshold.BLOCK_NONE)
         ]
         
         config = types.GenerateContentConfig(
@@ -130,33 +176,6 @@ async def analyze_report(data: AnalyzeRequest):
 
     except Exception as e:
         return {"rawReportSummary": f"Analysis Diagnostics Error: {str(e)}", "terms": [], "flaggedValues": [], "questions": []}
-
-@app.post("/api/chat")
-async def chat_followup(data: ChatRequest):
-    try:
-        safety_config = [
-            types.SafetySetting(category=types.HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold=types.HarmBlockThreshold.BLOCK_NONE),
-            types.SafetySetting(category=types.HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold=types.HarmBlockThreshold.BLOCK_NONE),
-            types.SafetySetting(category=types.HarmCategory.HARM_CATEGORY_HARASSMENT, threshold=types.HarmBlockThreshold.BLOCK_NONE),
-            types.SafetySetting(category=types.HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold=types.HarmBlockThreshold.BLOCK_NONE),
-        ]
-        
-        config = types.GenerateContentConfig(safety_settings=safety_config)
-        formatted_prompt = CHAT_PROMPT_TEMPLATE.format(question=data.userQuestion)
-        
-        response = client.models.generate_content(
-            model='gemini-2.5-flash',
-            contents=formatted_prompt,
-            config=config
-        )
-
-        if response.text:
-            return {"answer": response.text}
-        else:
-            return {"answer": "I understand you're feeling unwell. To help you better with first-aid information, could you tell me exactly where the pain is located and how intense it feels?"}
-
-    except Exception as e:
-        return {"answer": f"Backend Diagnostics Error: {str(e)}"}
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 8000))

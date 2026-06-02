@@ -14,6 +14,8 @@ const sendChatBtn = document.getElementById('send-chat-btn');
 const appContainer = document.querySelector('.app-container');
 
 let currentReportText = ""; 
+// Global conversation tracker state engine to stop amnesia
+let chatHistoryData = [];
 
 // Render web service address:
 const CLOUD_BACKEND_URL = "https://medai-backend-11h5.onrender.com";
@@ -27,6 +29,8 @@ fileInput.addEventListener('change', async (event) => {
     resultsDiv.classList.add('hidden');
     
     chatHistory.innerHTML = '<div class="chat-message ai-message">System synced. I have processed the clinical parameters. Ask me any direct or overarching health questions below.</div>';
+    // Clear conversation logs when a completely brand new document is processed
+    chatHistoryData = [];
 
     try {
         if (file.type === "application/pdf") {
@@ -102,7 +106,10 @@ async function handleChatSubmission() {
     appendChatMessage(question, 'user-message');
     chatInput.value = "";
 
-    const loadingBubble = appendChatMessage("Analyzing medical dataset and cross-referencing...", 'ai-message');
+    // Push the current user string to the active conversation history matrix
+    chatHistoryData.push({ role: "user", text: question });
+
+    const loadingBubble = appendChatMessage("Analyzing parameters and updating clinical history...", 'ai-message');
 
     try {
         const response = await fetch(`${CLOUD_BACKEND_URL}/api/chat`, {
@@ -110,13 +117,16 @@ async function handleChatSubmission() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 reportContext: currentReportText,
-                userQuestion: question
+                userQuestion: question,
+                history: chatHistoryData // Transmits historical text arrays directly to backend pipeline
             })
         });
         const result = await response.json();
         
-        // Render internal HTML tags (b, strong, br) successfully
         loadingBubble.innerHTML = result.answer;
+        
+        // Save the assistant's exact reply string to keep historical context unified
+        chatHistoryData.push({ role: "ai", text: result.answer });
         
     } catch (err) {
         loadingBubble.textContent = "Unable to route message to core model.";
@@ -135,7 +145,6 @@ function appendChatMessage(text, className) {
 sendChatBtn.addEventListener('click', handleChatSubmission);
 chatInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') handleChatSubmission(); });
 
-// Automatically pre-warms and wakes up the Render backend on page load
 window.addEventListener('DOMContentLoaded', () => {
     console.log("Pre-warming MedAI backend service...");
     fetch(`${CLOUD_BACKEND_URL}/api/health`)
@@ -151,17 +160,13 @@ if (window.visualViewport) {
     window.visualViewport.addEventListener('resize', () => {
         const visibleHeight = window.visualViewport.height;
         
-        // Force structural elements to match the exact open physical space
         document.body.style.height = `${visibleHeight}px`;
         if (appContainer) {
             appContainer.style.height = `${visibleHeight}px`;
         }
         
-        // CRITICAL FIX: Instantly snap the main browser window frame back to (0,0)
-        // This stops mobile Chrome/Safari from shifting the top branding header off-screen
         window.scrollTo(0, 0);
         
-        // If typing, smoothly adjust internal message log alignment only
         if (document.activeElement === chatInput) {
             setTimeout(() => {
                 chatHistory.scrollTop = chatHistory.scrollHeight;
@@ -170,7 +175,6 @@ if (window.visualViewport) {
     });
 }
 
-// Tap away safety listener to automatically drop the native keyboard layout
 chatHistory.addEventListener('click', () => {
     if (document.activeElement === chatInput) {
         chatInput.blur();
