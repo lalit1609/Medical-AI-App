@@ -11,6 +11,7 @@ const resultsDiv = document.getElementById('results');
 const chatHistory = document.getElementById('chat-history');
 const chatInput = document.getElementById('chat-input');
 const sendChatBtn = document.getElementById('send-chat-btn');
+const appContainer = document.querySelector('.app-container');
 
 let currentReportText = ""; 
 
@@ -114,7 +115,7 @@ async function handleChatSubmission() {
         });
         const result = await response.json();
         
-        // FIXED: Using innerHTML here renders layout bolding correctly
+        // Render internal HTML tags (b, strong, br) successfully
         loadingBubble.innerHTML = result.answer;
         
     } catch (err) {
@@ -134,11 +135,42 @@ function appendChatMessage(text, className) {
 sendChatBtn.addEventListener('click', handleChatSubmission);
 chatInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') handleChatSubmission(); });
 
-// ADDED: Automatically pre-warms and wakes up the Render backend on page load
+// Automatically pre-warms and wakes up the Render backend on page load
 window.addEventListener('DOMContentLoaded', () => {
     console.log("Pre-warming MedAI backend service...");
     fetch(`${CLOUD_BACKEND_URL}/api/health`)
         .then(res => res.json())
         .then(data => console.log("Backend status:", data.message))
         .catch(err => console.warn("Backend warming initial cycle pending..."));
+});
+
+// =======================================================
+// INSTAGRAM & MOBILE VIEWPORT KEYBOARD OVERLAY FIX
+// =======================================================
+if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', () => {
+        // Calculate the exact pixel height of the visible screen window space
+        const visibleHeight = window.visualViewport.height;
+        
+        // Force layout containers to strictly match hardware boundaries
+        document.body.style.height = `${visibleHeight}px`;
+        if (appContainer) {
+            appContainer.style.height = `${visibleHeight}px`;
+        }
+        
+        // If typing, lock alignment and push current conversations into frame
+        if (document.activeElement === chatInput) {
+            setTimeout(() => {
+                chatInput.scrollIntoView({ block: "end", behavior: "smooth" });
+                chatHistory.scrollTop = chatHistory.scrollHeight;
+            }, 100);
+        }
+    });
+}
+
+// Tap away safety listener to automatically drop the native keyboard layout
+chatHistory.addEventListener('click', () => {
+    if (document.activeElement === chatInput) {
+        chatInput.blur();
+    }
 });
