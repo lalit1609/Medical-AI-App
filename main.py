@@ -20,10 +20,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# LIGHTWEIGHT HEALTH CHECK: Keeps the instance from sleeping
+# Lightweight health check
 @app.get("/api/health")
 async def health_check():
-    return {"status": "active", "message": "Server is awake and responding"}
+    return {"status": "active", "message": "Server is awake"}
 
 # Initialize the Google GenAI SDK client
 GEMINI_KEY = os.getenv("GEMINI_API_KEY")
@@ -88,10 +88,10 @@ At the absolute end of your response, add this single-line disclaimer:
 async def analyze_report(data: AnalyzeRequest):
     try:
         safety_config = [
-            types.SafetySetting(category=types.HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold=types.HarmBlockThreshold.BLOCK_NONE),
-            types.SafetySetting(category=types.HarmCategory.HARM_CATEGORY_HARASSMENT, threshold=types.HarmBlockThreshold.BLOCK_NONE),
-            types.SafetySetting(category=types.HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold=types.HarmBlockThreshold.BLOCK_NONE),
-            types.SafetySetting(category=types.HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold=types.HarmBlockThreshold.BLOCK_NONE),
+            types.SafetySetting(
+                category=types.HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+                threshold=types.HarmBlockThreshold.BLOCK_NONE,
+            )
         ]
         
         config = types.GenerateContentConfig(
@@ -122,23 +122,23 @@ async def analyze_report(data: AnalyzeRequest):
                 config=config
             )
         else:
-            raise HTTPException(status_code=400, detail="Invalid payload structure type")
+            return {"error": "Invalid payload structure type"}
 
         clean_text = response.text.replace("```json", "").replace("
 ```", "").strip()
         return json.loads(clean_text)
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        # Pipes the error directly to the frontend response payload for debugging transparency
+        return {"rawReportSummary": f"Analysis Diagnostics Error: {str(e)}", "terms": [], "flaggedValues": [], "questions": []}
 
 @app.post("/api/chat")
 async def chat_followup(data: ChatRequest):
     try:
-        # Step 1: Open all safety valves completely to maximize bypass chance
         safety_config = [
             types.SafetySetting(category=types.HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold=types.HarmBlockThreshold.BLOCK_NONE),
-            types.SafetySetting(category=types.HarmCategory.HARM_CATEGORY_HARASSMENT, threshold=types.HarmBlockThreshold.BLOCK_NONE),
             types.SafetySetting(category=types.HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold=types.HarmBlockThreshold.BLOCK_NONE),
+            types.SafetySetting(category=types.HarmCategory.HARM_CATEGORY_HARASSMENT, threshold=types.HarmBlockThreshold.BLOCK_NONE),
             types.SafetySetting(category=types.HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold=types.HarmBlockThreshold.BLOCK_NONE),
         ]
         
@@ -151,31 +151,14 @@ async def chat_followup(data: ChatRequest):
             config=config
         )
 
-        # Step 2: Validate the response payload safely
-        answer_text = ""
-        if response.generated_content and response.generated_content.parts:
-            answer_text = response.text
-            
-        if not answer_text or answer_text.strip() == "":
-            raise ValueError("Empty generation block detected")
-
-        return {"answer": answer_text}
+        if response.text:
+            return {"answer": response.text}
+        else:
+            return {"answer": "Diagnostic Alert: The model executed successfully but generated an empty text string due to systemic constraints."}
 
     except Exception as e:
-        # Step 3: Foolproof safety net. If Gemini chokes, return a beautiful custom triage response manually!
-        print(f"Bypass Triggered - Fallback active: {e}")
-        
-        q_lower = data.userQuestion.lower()
-        if "headache" in q_lower or "head" in q_lower:
-            fallback = "I'm sorry to hear you're experiencing a headache. To help guide you to the right standard first-aid options, could you please let me know its **exact location** (e.g., forehead, temple, one side) and the **intensity** (mild, moderate, or severe)?\n\n*Educational reference guide. Please verify with a pharmacist or healthcare professional.*"
-        elif "stomach" in q_lower or "belly" in q_lower or "gas" in q_lower or "ache" in q_lower:
-            fallback = "I note your stomach discomfort. To provide the best safe OTC guidance, could you let me know the **exact location** of the pain (upper or lower abdomen) and how **intense** it feels right now?\n\n*Educational reference guide. Please verify with a pharmacist or healthcare professional.*"
-        elif "fever" in q_lower or "body" in q_lower or "warm" in q_lower:
-            fallback = "I see you're dealing with feverish symptoms or body pain. Could you tell me your approximate **temperature** or the overall **intensity** of the pain so I can provide the correct standard first-aid protocol?\n\n*Educational reference guide. Please verify with a pharmacist or healthcare professional.*"
-        else:
-            fallback = "I understand you are feeling unwell. To help provide clear Indian first-aid or OTC reference options, could you describe the **location** and **intensity** of your primary symptoms?\n\n*Educational reference guide. Please verify with a pharmacist or healthcare professional.*"
-            
-        return {"answer": fallback}
+        # Forcing the backend to return the exact exception description directly inside the chat bubble JSON container
+        return {"answer": f"Backend Diagnostics Error: {str(e)}"}
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 8000))
