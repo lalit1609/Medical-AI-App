@@ -11,7 +11,6 @@ import uvicorn
 
 app = FastAPI()
 
-# Enable CORS for frontend asset delivery mapping
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -20,12 +19,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Lightweight health check
 @app.get("/api/health")
 async def health_check():
     return {"status": "active", "message": "Server is awake"}
 
-# Initialize the Google GenAI SDK client
 GEMINI_KEY = os.getenv("GEMINI_API_KEY")
 client = genai.Client(api_key=GEMINI_KEY)
 
@@ -60,6 +57,7 @@ Strictly return ONLY a valid JSON object matching this structure:
 }
 """
 
+# FIXED PROMPT: Switches completely to standard HTML tags for layout structure
 CHAT_PROMPT_TEMPLATE = """
 You are MedAI, an intelligent, empathetic Indian First-Aid & OTC Medication Assistant. Your goal is to guide users through minor ailments using a comfortable, step-by-step triage conversation so you do not overwhelm them with too many questions at once.
 
@@ -68,8 +66,8 @@ User's Input: {question}
 You must analyze the user's input and strictly follow this phased protocol:
 
 PHASE 1: GATHER CORE PARAMETERS (If Location or Intensity is missing)
-- If the user mentions a symptom (like a headache, stomach ache, body pain) but has NOT yet clearly specified BOTH the exact location (e.g., forehead, one side, upper abdomen) and the intensity (e.g., mild, moderate, crushing/severe), you must ask ONLY for those two details.
-- Provide a brief, comforting acknowledgment, and then ask for the intensity and location clearly. Do not suggest specific medications, dosages, or ask about secondary symptoms (like nausea/fever) in this phase.
+- If the user mentions a symptom (like a headache, stomach ache, body pain) but has NOT yet clearly specified BOTH the exact location and the intensity, you must ask ONLY for those two details.
+- Provide a brief, comforting acknowledgment, and then ask for the intensity and location clearly. Do not suggest specific medications, dosages, or ask about secondary symptoms in this phase.
 
 PHASE 2: TAILORED MEDICATION & SECONDARY TRIAGE (If Location and Intensity are known)
 - If the user's input contains or answers both the location and intensity of the pain, proceed to give tailored relief options.
@@ -77,11 +75,11 @@ PHASE 2: TAILORED MEDICATION & SECONDARY TRIAGE (If Location and Intensity are k
 - AFTER listing the medication and dosage, ask your secondary triage questions to check for underlying complications (e.g., "To ensure it's nothing serious, are you also running a fever, feeling nauseous, or experiencing any dizziness?").
 
 Core Operational Guardrails:
-1. NO AUTOMATIC REFUSALS: Do not hide behind corporate AI text ("I cannot give medical advice", "As an AI..."). Speak naturally as a helpful first-aid advisor.
-2. SCANNABILITY: Use clean markdown bolding and bullet points for all medication specs so they are crystal clear.
+1. NO AUTOMATIC REFUSALS: Do not hide behind corporate AI text. Speak naturally as a helpful first-aid advisor.
+2. STRICT HTML FORMATTING ONLY: Never use markdown asterisks (* or **) anywhere. Instead, use standard HTML <b>tags for bold text</b>, <br> for line breaks, and standard bullet points like • for lists. Ensure the response flows elegantly.
 
-At the absolute end of your response, add this single-line disclaimer:
-"*Educational reference guide. Please verify with a pharmacist or healthcare professional.*"
+At the absolute end of your response, add this single-line disclaimer wrapped in italic tags:
+"<i>Educational reference guide. Please verify with a pharmacist or healthcare professional.</i>"
 """
 
 @app.post("/api/analyze")
@@ -124,8 +122,6 @@ async def analyze_report(data: AnalyzeRequest):
         else:
             return {"error": "Invalid payload structure type"}
 
-        # FIXED: Removed the redundant .replace() logic entirely. 
-        # response_mime_type="application/json" guarantees a clean string without backticks.
         clean_text = response.text.strip()
         return json.loads(clean_text)
 
@@ -154,7 +150,7 @@ async def chat_followup(data: ChatRequest):
         if response.text:
             return {"answer": response.text}
         else:
-            return {"answer": "Diagnostic Alert: The model executed successfully but generated an empty text string due to systemic constraints."}
+            return {"answer": "I understand you're feeling unwell. To help you better with first-aid information, could you tell me exactly where the pain is located and how intense it feels?"}
 
     except Exception as e:
         return {"answer": f"Backend Diagnostics Error: {str(e)}"}
