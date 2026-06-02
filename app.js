@@ -113,7 +113,10 @@ async function handleChatSubmission() {
             })
         });
         const result = await response.json();
-        loadingBubble.textContent = result.answer;
+        
+        // FIXED: Changed from .textContent to .innerHTML to render bold tags and line breaks correctly
+        loadingBubble.innerHTML = result.answer;
+        
     } catch (err) {
         loadingBubble.textContent = "Unable to route message to core model.";
     }
