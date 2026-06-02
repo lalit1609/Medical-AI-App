@@ -114,7 +114,7 @@ async function handleChatSubmission() {
         });
         const result = await response.json();
         
-        // FIXED: Changed from .textContent to .innerHTML to render bold tags and line breaks correctly
+        // FIXED: Using innerHTML here renders layout bolding correctly
         loadingBubble.innerHTML = result.answer;
         
     } catch (err) {
@@ -133,3 +133,12 @@ function appendChatMessage(text, className) {
 
 sendChatBtn.addEventListener('click', handleChatSubmission);
 chatInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') handleChatSubmission(); });
+
+// ADDED: Automatically pre-warms and wakes up the Render backend on page load
+window.addEventListener('DOMContentLoaded', () => {
+    console.log("Pre-warming MedAI backend service...");
+    fetch(`${CLOUD_BACKEND_URL}/api/health`)
+        .then(res => res.json())
+        .then(data => console.log("Backend status:", data.message))
+        .catch(err => console.warn("Backend warming initial cycle pending..."));
+});
