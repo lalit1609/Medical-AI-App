@@ -123,6 +123,14 @@ async function handleChatSubmission() {
         });
         const result = await response.json();
         
+        // INTEGRATED FIX: Catch and handle Google rate limit triggers seamlessly
+        if (result.answer && (result.answer.includes("429") || result.answer.includes("RESOURCE_EXHAUSTED"))) {
+            loadingBubble.innerHTML = "⚠️ <b>System load limit reached.</b> Please wait a few seconds before adding your next symptom.";
+            // Remove the un-analyzed user question so it doesn't taint future history passes
+            chatHistoryData.pop(); 
+            return;
+        }
+        
         loadingBubble.innerHTML = result.answer;
         
         // Save the assistant's exact reply string to keep historical context unified
