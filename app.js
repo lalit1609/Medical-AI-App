@@ -15,7 +15,7 @@ const appContainer = document.querySelector('.app-container');
 
 let currentReportText = ""; 
 
-// Your exact Render web service address integrated perfectly:
+// Render web service address:
 const CLOUD_BACKEND_URL = "https://medai-backend-11h5.onrender.com";
 
 fileInput.addEventListener('change', async (event) => {
@@ -145,25 +145,27 @@ window.addEventListener('DOMContentLoaded', () => {
 });
 
 // =======================================================
-// INSTAGRAM & MOBILE VIEWPORT KEYBOARD OVERLAY FIX
+// MOBILE & IN-APP VIEWPORT KEYBOARD FIX ENGINE
 // =======================================================
 if (window.visualViewport) {
     window.visualViewport.addEventListener('resize', () => {
-        // Calculate the exact pixel height of the visible screen window space
         const visibleHeight = window.visualViewport.height;
         
-        // Force layout containers to strictly match hardware boundaries
+        // Force structural elements to match the exact open physical space
         document.body.style.height = `${visibleHeight}px`;
         if (appContainer) {
             appContainer.style.height = `${visibleHeight}px`;
         }
         
-        // If typing, lock alignment and push current conversations into frame
+        // CRITICAL FIX: Instantly snap the main browser window frame back to (0,0)
+        // This stops mobile Chrome/Safari from shifting the top branding header off-screen
+        window.scrollTo(0, 0);
+        
+        // If typing, smoothly adjust internal message log alignment only
         if (document.activeElement === chatInput) {
             setTimeout(() => {
-                chatInput.scrollIntoView({ block: "end", behavior: "smooth" });
                 chatHistory.scrollTop = chatHistory.scrollHeight;
-            }, 100);
+            }, 50);
         }
     });
 }
