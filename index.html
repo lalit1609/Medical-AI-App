@@ -3,68 +3,88 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MedAI // Intelligence</title>
-    <link rel="icon" type="image/png" href="favicon.png?v=2">
+    <!-- PATCHED: Clean browser tab name -->
+    <title>MedAI</title>
+    
+    <!-- External Dependencies & Fonts -->
     <link rel="stylesheet" href="style.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Core PDF Extraction Engine (PDF.js) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
 </head>
 <body>
     <div class="app-container">
+        <!-- Sidebar Layout Module -->
         <aside class="sidebar">
+            <!-- PATCHED: Simplified branding header layout -->
             <div class="brand">
-                <img src="logo-web.png" alt="MedAI Logo" class="brand-logo">
+                <img src="logo.png" alt="MedAI Logo" class="brand-logo" onerror="this.style.display='none'">
                 <span>MedAI</span>
             </div>
             
+            <!-- Document Intake System -->
             <div class="upload-box">
-                <label for="report-upload" class="custom-file-upload">
-                    <span>＋ Drop Report here</span>
-                    <p>PDF, PNG, or JPG</p>
+                <label class="custom-file-upload">
+                    <input type="file" id="report-upload" accept="application/pdf, image/*">
+                    <span>Upload Report</span>
+                    <p>PDF or Image up to 10MB</p>
                 </label>
-                <input type="file" id="report-upload" accept="application/pdf, image/*" />
-                <div id="file-name" class="file-name">No file selected</div>
-            </div>
-            
-            <div id="loading" class="loading-container hidden">
-                <div class="spinner"></div>
-                <p id="loading-text">Parsing data...</p>
+                <div id="file-name" class="file-name"></div>
             </div>
         </aside>
 
+        <!-- Main Workspace Operational Area -->
         <main class="main-content">
+            <!-- Dynamic Processing Diagnostics Overlay -->
+            <div id="loading" class="loading-container hidden">
+                <div class="spinner"></div>
+                <p id="loading-text">Synchronizing parameters...</p>
+            </div>
+
+            <!-- RESULTS DASHBOARD GRID -->
             <section id="results" class="results-grid hidden">
                 <div class="card full-width">
-                    <h3>Clinical Analysis Summary</h3>
-                    <p id="summary-text" class="summary-p">Metrics loaded.</p>
+                    <h3>Report Summary</h3>
+                    <p id="summary-text" class="summary-p"></p>
                 </div>
+                
                 <div class="card">
-                    <h3>Flagged Biomarkers & Ranges</h3>
-                    <ul id="values-list" class="data-list"></ul>
-                </div>
-                <div class="card">
-                    <h3>Simplified Glossary</h3>
+                    <h3>Medical Terms Explained</h3>
                     <ul id="terms-list" class="data-list"></ul>
                 </div>
+                
+                <div class="card">
+                    <h3>Flagged Clinical Values</h3>
+                    <ul id="values-list" class="data-list"></ul>
+                </div>
+                
                 <div class="card full-width">
-                    <h3>Recommended Doctor Discussion Points</h3>
+                    <h3>Recommended Questions for Your Doctor</h3>
                     <ul id="questions-list" class="data-list"></ul>
                 </div>
             </section>
 
+            <!-- CHAT ENGINE SECTIONS -->
             <section class="chat-section">
                 <div id="chat-history" class="chat-history">
                     <div class="chat-message ai-message">
-                        Hello. Upload a lab report or ask me any general medical question to begin.
+                        System synced. I have processed the clinical parameters. Ask me any direct or overarching health questions below.
                     </div>
                 </div>
+                
+                <!-- Fixed Interactive Dock Bar Container -->
                 <div class="chat-input-container">
-                    <input type="text" id="chat-input" placeholder="Ask about terms, ranges, or medication classes..." autocomplete="off">
+                    <input type="text" id="chat-input" placeholder="Ask a follow-up question regarding your health parameters..." autocomplete="off">
                     <button id="send-chat-btn">Send</button>
                 </div>
             </section>
         </main>
     </div>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+
+    <!-- Application Controller Logic Link -->
     <script src="app.js"></script>
 </body>
 </html>
