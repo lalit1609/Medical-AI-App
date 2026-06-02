@@ -124,12 +124,12 @@ async def analyze_report(data: AnalyzeRequest):
         else:
             return {"error": "Invalid payload structure type"}
 
-        clean_text = response.text.replace("```json", "").replace("
-```", "").strip()
+        # FIXED: Removed the redundant .replace() logic entirely. 
+        # response_mime_type="application/json" guarantees a clean string without backticks.
+        clean_text = response.text.strip()
         return json.loads(clean_text)
 
     except Exception as e:
-        # Pipes the error directly to the frontend response payload for debugging transparency
         return {"rawReportSummary": f"Analysis Diagnostics Error: {str(e)}", "terms": [], "flaggedValues": [], "questions": []}
 
 @app.post("/api/chat")
@@ -157,7 +157,6 @@ async def chat_followup(data: ChatRequest):
             return {"answer": "Diagnostic Alert: The model executed successfully but generated an empty text string due to systemic constraints."}
 
     except Exception as e:
-        # Forcing the backend to return the exact exception description directly inside the chat bubble JSON container
         return {"answer": f"Backend Diagnostics Error: {str(e)}"}
 
 if __name__ == '__main__':
