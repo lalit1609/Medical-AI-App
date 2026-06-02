@@ -25,15 +25,18 @@ body {
     background-color: var(--bg-main);
     color: var(--text-primary);
     overflow: hidden;
+    height: 100vh;
+    height: 100dvh; /* Modern standard: accounts dynamically for mobile browser navigation bars */
 }
 
 .app-container {
     display: flex;
     width: 100vw;
     height: 100vh;
+    height: 100dvh;
 }
 
-/* Sidebar Layout (Desktop Default) */
+/* Sidebar Layout (Desktop Default Layout Mode) */
 .sidebar {
     width: 300px;
     background-color: var(--bg-sidebar);
@@ -108,11 +111,11 @@ input[type="file"] {
     flex: 1;
     display: flex;
     flex-direction: column;
-    height: 100vh;
+    height: 100%;
     overflow: hidden;
 }
 
-/* RESULTS GRID */
+/* RESULTS DASHBOARD GRID */
 .results-grid {
     padding: 32px;
     display: grid;
@@ -161,7 +164,7 @@ input[type="file"] {
     color: #fff;
 }
 
-/* CHAT AREA */
+/* CHAT ENGINE SECTIONS */
 .chat-section {
     flex: 1;
     display: flex;
@@ -205,7 +208,7 @@ input[type="file"] {
     align-self: flex-end;
 }
 
-/* FIXED CHATBAR INPUT CONTAINER */
+/* CHAT INPUT BAR CONTAINER */
 .chat-input-container {
     padding: 24px 32px;
     display: flex;
@@ -251,68 +254,111 @@ input[type="file"] {
     margin: 0 auto 12px;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
-.loading-container { text-align: center; font-size: 12px; color: var(--text-secondary); padding-top: 20px; }
+.loading-container { text-align: center; font-size: 12px; color: var(--text-secondary); padding: 10px 0; }
 
 
-/* ========================================== */
-新規追加 /* AUTOMATED MOBILE SMART MEDIA QUERY RESPONSIVENESS MATRIX */
-/* ========================================== */
+/* ======================================================= */
+/* AUTOMATED MOBILE TOP-BAR TRANSFORMATION MEDIA QUERY    */
+/* ======================================================= */
 @media (max-width: 768px) {
     .app-container {
-        flex-direction: column; /* Stacks sidebar on top of chat content vertically */
+        flex-direction: column;
     }
 
+    /* Converts vertical sidebar into a sleek row header at the top */
     .sidebar {
         width: 100%;
-        height: auto;
-        padding: 16px;
-        gap: 16px;
+        height: 65px;
+        flex-direction: row;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0 16px;
+        gap: 0;
         border-right: none;
         border-bottom: 1px solid var(--border);
     }
 
     .brand {
-        justify-content: flex-start;
+        font-size: 18px;
+        gap: 8px;
     }
     
     .brand-logo {
-        height: 32px; /* Marginally downscales logo footprint on mobile headers */
-        max-height: 32px;
+        height: 30px;
+        max-height: 30px;
     }
 
     .upload-box {
-        gap: 8px;
+        flex-direction: row;
+        align-items: center;
+        gap: 0;
     }
 
+    /* Compresses the massive upload target into a clean, minimal row item */
     .custom-file-upload {
-        padding: 16px 12px; /* Makes dropping asset panels ultra-compact on mobile */
+        padding: 8px 14px;
+        border-style: solid;
+        border-width: 1px;
+        border-radius: 6px;
+        background: var(--bg-card);
     }
 
+    .custom-file-upload span {
+        font-size: 12px;
+        margin-bottom: 0;
+    }
+
+    .custom-file-upload p, .file-name, .loading-container {
+        display: none !important; /* Strips out extra text labels to save screen real estate */
+    }
+
+    /* Strictly confines the main panel to the viewport height minus the header height */
     .main-content {
-        height: auto;
-        flex: 1; /* Automatically consumes all remaining vertical height maps */
+        height: calc(100vh - 65px);
+        height: calc(100dvh - 65px);
     }
 
+    /* Rescales dashboard layout constraints on small displays */
     .results-grid {
-        grid-template-columns: 1fr; /* Forces metrics onto a single responsive column row */
+        grid-template-columns: 1fr;
         padding: 16px;
         gap: 12px;
-        max-height: 35%; /* Caps dashboard parameters to prioritize chat interface views */
+        height: 40%;
+        max-height: 40%;
     }
 
     .full-width {
         grid-column: span 1;
     }
 
+    .card {
+        padding: 16px;
+    }
+
     .chat-history {
-        padding: 20px 16px;
+        padding: 16px;
+        gap: 12px;
     }
 
     .chat-message {
-        max-width: 85%; /* Extends chat width bubbles slightly for readability on narrow glass panels */
+        max-width: 85%;
+        padding: 12px 14px;
+        font-size: 13.5px;
     }
 
+    /* Tightens up the input footer to prevent keyboard squishing loops */
     .chat-input-container {
-        padding: 16px;
+        padding: 12px 16px;
+        background: var(--bg-main);
+    }
+
+    .chat-input-container input {
+        padding: 12px;
+        font-size: 13.5px;
+    }
+
+    .chat-input-container button {
+        padding: 0 16px;
+        font-size: 13.5px;
     }
 }
