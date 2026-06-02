@@ -27,6 +27,7 @@ body {
     overflow: hidden;
     height: 100vh;
     height: 100dvh; /* Modern standard: accounts dynamically for mobile browser navigation bars */
+    -webkit-text-size-adjust: 100%; /* FIX: Disables iOS system level automatic font-scaling calculations */
 }
 
 .app-container {
@@ -358,10 +359,10 @@ input[type="file"] {
         background: var(--bg-main);
     }
 
-    /* FIXED: Setting font-size to 16px stops iOS Safari from zooming/breaking layouts on focus */
-    .chat-input-container input {
+    /* FIXED: Targeting the ID specifically with !important blocks iOS Safari text auto-zoom entirely */
+    .chat-input-container input, #chat-input {
         padding: 12px;
-        font-size: 16px; 
+        font-size: 16px !important; 
     }
 
     .chat-input-container button {
